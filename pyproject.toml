@@ -15,6 +15,9 @@ dependencies = [
 [tool.poetry]
 packages = [{include = "redcap_eda", from = "src"}]
 
+[tool.poetry.scripts]
+redcap-eda = "redcap_eda.cli:cli"
+
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.3.4"
 
