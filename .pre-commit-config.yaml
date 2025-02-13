@@ -11,7 +11,7 @@ repos:
       - id: check-yaml
       - id: check-toml
       - id: debug-statements
-      - id: double-quote-string-fixer
+      #- id: double-quote-string-fixer
       - id: name-tests-test  # follow pytest naming convention
       - id: requirements-txt-fixer
       - id: check-merge-conflict  # avoid lingering merge markers
