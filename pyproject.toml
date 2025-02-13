@@ -8,11 +8,15 @@ authors = [
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
-    "pandas (>=2.2.3,<3.0.0)"
+    "pandas (>=2.2.3,<3.0.0)",
+    "click (>=8.1.8,<9.0.0)"
 ]
 
 [tool.poetry]
 packages = [{include = "redcap_eda", from = "src"}]
+
+[tool.poetry.scripts]
+redcap-eda = "redcap_eda.cli:cli"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.3.4"
