@@ -117,7 +117,12 @@ repos:
         entry: poetry run mypy
         language: system
         types_or: [python, pyi]
-        args: [--ignore-missing-imports, --scripts-are-modules]
+        args:
+          - --ignore-missing-imports
+          - --scripts-are-modules
+          - --cache-dir=.mypy_cache
+          - --explicit-package-bases
+          - src/
         require_serial: true
         minimum_pre_commit_version: 2.9.2
         # ===================== JavaScript =============================
