@@ -42,6 +42,11 @@ def load_data(case, dataset_name):
         logger.error(error_msg)
         raise ValueError(error_msg)
 
+    if case != "01":
+        error_msg = "❌ Case number given: {case} \nThis package currently only supports test case data '01'"
+        logger.error(error_msg)
+        raise ValueError(error_msg)
+
     url = BASE_URL + f"case-{case}/" + DATASETS[dataset_name].format(case=case)
     logger.info(f"🔄 Fetching dataset: {dataset_name} from {url}")
 
