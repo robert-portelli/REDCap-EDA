@@ -24,6 +24,8 @@ pytest = "^8.3.4"
 types-requests = "^2.32.0.20241016"
 mypy = "^1.15.0"
 requests-mock = "^1.12.1"
+matplotlib = "^3.10.0"
+seaborn = "^0.13.2"
 
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]
