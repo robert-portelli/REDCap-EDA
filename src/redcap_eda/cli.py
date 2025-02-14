@@ -1,6 +1,16 @@
 import click
 from redcap_eda.load_case_data import load_data
 from redcap_eda.logger import logger, set_log_level
+from redcap_eda.analysis import (
+    check_data_quality,
+    compute_summary_statistics,
+    compute_correlations,
+)
+from redcap_eda.visualization import (
+    plot_histogram,
+    plot_boxplot,
+    plot_correlation_matrix,
+)
 
 
 @click.group()
@@ -23,18 +33,74 @@ def analyze(case):
 
     try:
         # Load datasets (handling missing data)
-        df_ui = load_data(case, "records")
-        df_api = load_data(case, "records_api")
+        data = {
+            # "df_ui": load_data(case, "records"),
+            "df_api": load_data(case, "records_api"),
+        }
 
-        logger.debug(
-            f"📊 Dataset Records UI: {df_ui.head() if df_ui is not None else 'Not available'}",
-        )
-        logger.debug(
-            f"📊 Dataset Records API: {df_api.head() if df_api is not None else 'Not available'}",
-        )
+        # Log missing datasets
+        missing_keys = [key for key, value in data.items() if value is None]
+        if missing_keys:
+            for key in missing_keys:
+                logger.warning(f"⚠️ Case {case} is missing data from {key}")
+
+        # Exit if all datasets are missing
+        if all(value is None for value in data.values()):
+            logger.error(f"❌ Case {case} lacks records for analysis.")
+            return
+
+        logger.info("✅ Proceeding with analysis of available records.")
+
+        # Log dataset previews
+        log_data_preview(data)
+
+        # --- Data Analysis ---
+        df_ui = data["df_ui"]  # Ensure df_ui is accessible in this scope
+        logger.info("🔎 Running data quality check...")
+        quality_report = check_data_quality(df_ui)
+        logger.info(f"Data Quality Report:\n{quality_report}")
+
+        logger.info("📊 Computing summary statistics...")
+        summary_stats = compute_summary_statistics(df_ui)
+        logger.info(f"Summary Statistics:\n{summary_stats}")
+
+        logger.info("🔗 Computing correlations...")
+        correlations = compute_correlations(df_ui)
+        logger.info(f"Correlation Matrix:\n{correlations}")
+
+        # --- Data Visualization ---
+        process_visualizations(df_ui)
 
     except Exception as e:
         logger.error(f"❌ Error: {e}")
+
+
+def log_data_preview(data):
+    """Logs preview of datasets if available."""
+    for key, value in data.items():
+        preview = value.head() if value is not None else "Not available"
+        logger.debug(f"📊 {key.upper()} Preview:\n{preview}")
+
+
+def process_visualizations(df):
+    """Handles visualization generation if numeric columns exist."""
+    numeric_cols = df.select_dtypes(include=["number"]).columns
+
+    if not numeric_cols.any():
+        logger.warning("⚠️ No numeric columns found for visualization.")
+        return
+
+    logger.info("📈 Generating visualizations...")
+
+    for col in numeric_cols[:3]:  # Limit to 3 columns for brevity
+        logger.debug(f"Generating histogram for {col}...")
+        plot_histogram(df, col)
+
+        logger.debug(f"Generating boxplot for {col}...")
+        plot_boxplot(df, col)
+
+    logger.debug("Generating correlation heatmap...")
+    plot_correlation_matrix(df)
 
 
 # Register CLI commands
