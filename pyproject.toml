@@ -20,6 +20,8 @@ redcap-eda = "redcap_eda.cli:cli"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.3.4"
+types-requests = "^2.32.0.20241016"
+mypy = "^1.15.0"
 
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]
