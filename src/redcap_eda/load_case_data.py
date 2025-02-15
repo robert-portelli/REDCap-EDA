@@ -21,7 +21,7 @@ DATASETS = {
 }
 
 
-def load_data(case, dataset_name):
+def load_data(case="01", dataset_name="records_api"):
     """
     Load a dataset from the REDCap test dataset repository for a specific case.
 
