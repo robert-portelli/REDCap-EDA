@@ -1,6 +1,7 @@
 import click
 from redcap_eda.load_case_data import load_data
 from redcap_eda.logger import logger, set_log_level
+from redcap.eda.cast_schema import enforce_schema
 from redcap_eda.analysis import (
     check_data_quality,
     compute_summary_statistics,
@@ -33,43 +34,40 @@ def analyze(case):
 
     try:
         # Load datasets (handling missing data)
-        data = {
-            # "df_ui": load_data(case, "records"),
-            "df_api": load_data(case, "records_api"),
-        }
-
-        # Log missing datasets
-        missing_keys = [key for key, value in data.items() if value is None]
-        if missing_keys:
-            for key in missing_keys:
-                logger.warning(f"⚠️ Case {case} is missing data from {key}")
-
-        # Exit if all datasets are missing
-        if all(value is None for value in data.values()):
+        if not (df := load_data()):
             logger.error(f"❌ Case {case} lacks records for analysis.")
             return
 
         logger.info("✅ Proceeding with analysis of available records.")
 
-        # Log dataset previews
-        log_data_preview(data)
+        # --- Apply Schema Casting ---
+        logger.info("🔎 Identifying and converting columns based on schema...")
+        df, report = enforce_schema(df)
+
+        # Log schema mutation report
+        logger.info("\n📜 Data Type Conversion Report:\n%s", report.to_string())
+
+        # --- Data Inspection (Post-Casting) ---
+        logger.info("📊 Updated Data Characteristics:")
+        df.info()
+        logger.info("\n📌 Summary Statistics:\n%s", df.describe().to_string())
+        logger.info("\n🔹 Sample Records:\n%s", df.head(n=5).to_string())
 
         # --- Data Analysis ---
-        df_ui = data["df_ui"]  # Ensure df_ui is accessible in this scope
         logger.info("🔎 Running data quality check...")
-        quality_report = check_data_quality(df_ui)
+        quality_report = check_data_quality(df)
         logger.info(f"Data Quality Report:\n{quality_report}")
 
         logger.info("📊 Computing summary statistics...")
-        summary_stats = compute_summary_statistics(df_ui)
+        summary_stats = compute_summary_statistics(df)
         logger.info(f"Summary Statistics:\n{summary_stats}")
 
         logger.info("🔗 Computing correlations...")
-        correlations = compute_correlations(df_ui)
+        correlations = compute_correlations(df)
         logger.info(f"Correlation Matrix:\n{correlations}")
 
         # --- Data Visualization ---
-        process_visualizations(df_ui)
+        process_visualizations(df)
 
     except Exception as e:
         logger.error(f"❌ Error: {e}")
