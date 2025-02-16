@@ -22,7 +22,14 @@ Modules
 """
 
 # Import all submodules for direct access
-from redcap_eda import cli, load_case_data, analysis, visualization, logger
+from redcap_eda import cli, load_case_data, analysis, visualization, logger, cast_schema
 
 # Define what is accessible via "from redcap_eda import *"
-__all__ = ["cli", "load_case_data", "analysis", "visualization", "logger"]
+__all__ = [
+    "cli",
+    "load_case_data",
+    "analysis",
+    "visualization",
+    "logger",
+    "cast_schema",
+]
