@@ -1,7 +1,7 @@
 import click
 from redcap_eda.load_case_data import load_data
 from redcap_eda.logger import logger, set_log_level
-from redcap.eda.cast_schema import enforce_schema
+from redcap_eda.cast_schema import enforce_schema
 from redcap_eda.analysis import (
     check_data_quality,
     compute_summary_statistics,
