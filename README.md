@@ -6,12 +6,13 @@
 REDCap-EDA is a command-line tool for performing **Exploratory Data Analysis (EDA)** on **REDCap datasets**. It automates data inspection, schema enforcement, statistical analysis, and visualization.
 
 ## 🚀 Features
-- ✅ **Automatic Data Type Enforcement** (casts columns based on predefined schema)
-- 📊 **Summary Statistics** (mean, median, std dev, outliers)
-- 📉 **Visualizations** (histograms, box plots, categorical distributions)
+- ✅ **Automatic Data Type Enforcement** (casts columns based on a predefined or user-defined schema)
+- 📊 **Summary Statistics** (mean, median, std dev, outliers, categorical distributions)
+- 📉 **Visualizations** (histograms, box plots, categorical distributions, time trends)
 - 🔄 **Multiprocessing for Faster Execution**
 - 🔍 **Progress Bars with `tqdm`**
 - 📂 **Exports Reports** (JSON, CSV, and saved visualizations)
+- 📝 **Interactive Schema Creation** for custom datasets
 
 ## 📦 Installation
 ```bash
@@ -24,14 +25,30 @@ poetry install
 ```
 
 ## 🛠️ Usage
-### 🔹 Running EDA on a REDCap Test Case
+
+### 🔹 Example Using the Sample Dataset and Interactive Schema Creation
 ```bash
-poetry run redcap-eda analyze --case 01
+poetry run redcap-eda analyze --sample
+```
+
+### 🔹 Example Using the Sample Dataset with a Predefined Schema
+```bash
+poetry run redcap-eda analyze --sample --schema schemas/schema_sample_dataset.json
+```
+
+### 🔹 Running EDA on a Custom Dataset with Interactive Schema Creation
+```bash
+poetry run redcap-eda analyze --csv path/to/your_data.csv
+```
+
+### 🔹 Running EDA on a Custom Dataset with a Predefined Schema
+```bash
+poetry run redcap-eda analyze --csv path/to/your_data.csv --schema path/to/schema.json
 ```
 
 ### 🔹 Running in Debug Mode
 ```bash
-poetry run redcap-eda --debug analyze --case 01
+poetry run redcap-eda --debug analyze --sample
 ```
 
 ### 🔹 Listing Available Test Cases
@@ -58,11 +75,12 @@ make test-eda
 ```bash
 .
 ├── Makefile                # Helper commands
-├── Makefile.bak            # Backup of Makefile
 ├── README.md               # Project documentation
 ├── mypy.ini                # Type checking configuration
 ├── poetry.lock             # Poetry dependency lock file
 ├── pyproject.toml          # Poetry project configuration
+├── schemas                 # Saved schema files
+│   └── schema_sample_dataset.json
 ├── src
 │   ├── logs
 │   │   └── redcap_eda.log  # Log files
@@ -71,6 +89,9 @@ make test-eda
 │       ├── analysis        # EDA analysis modules
 │       │   ├── __init__.py
 │       │   ├── categorical
+│       │   │   ├── __init__.py
+│       │   │   └── mixins.py
+│       │   ├── datetime
 │       │   │   ├── __init__.py
 │       │   │   └── mixins.py
 │       │   ├── eda.py      # Main EDA module
@@ -86,7 +107,8 @@ make test-eda
 │       ├── logger.py       # Logging utilities
 └── tests                   # Unit tests
     ├── __init__.py
-    └── test_load_case_data.py
+    └── fixtures
+        └── toy_data.csv    # Sample test data
 ```
 
 ## 📝 Contributing
