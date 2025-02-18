@@ -24,7 +24,7 @@ test:
 
 # 🌳 Show project structure
 tree:
-	@tree --prune -I "*~|__pycache__"
+	@tree --prune -I "*~|__pycache__|eda_reports"
 
 # 📊 Test TextAnalysisMixin interactively
 test-text:
