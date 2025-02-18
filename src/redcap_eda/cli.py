@@ -1,7 +1,7 @@
 import click
 from redcap_eda.load_case_data import load_data
 from redcap_eda.logger import logger, set_log_level
-from redcap_eda.cast_schema import enforce_schema
+from redcap_eda.cast_schema import SchemaHandler
 from redcap_eda.analysis.eda import ExploratoryDataAnalysis
 
 
@@ -21,36 +21,58 @@ def cli(debug: bool) -> None:
 
 @click.command()
 @click.option(
-    "--case",
-    required=True,
-    help="Specify the REDCap test case (e.g., 01, 07, 20)",
+    "--sample",
+    is_flag=True,
+    help="Use the default REDCap sample dataset (Case 01).",
+)
+@click.option(
+    "--csv",
+    type=click.Path(exists=True),
+    help="Path to a user-provided CSV file.",
+)
+@click.option(
+    "--schema",
+    type=click.Path(exists=True),
+    help="Path to a schema file (JSON/YAML).",
 )
 @click.option(
     "--output",
     default="eda_reports",
-    help="Specify the directory to save reports",
+    help="Specify the directory to save reports.",
 )
-def analyze(case: str, output: str) -> None:
-    """Performs EDA on the specified REDCap test dataset.
-
-    This function:
-    - Loads dataset corresponding to the given test case.
-    - Applies schema casting for strict data types.
-    - Runs exploratory data analysis (EDA).
-    - Saves visualizations and reports to the specified output directory.
+def analyze(sample: bool, csv: str | None, schema: str | None, output: str) -> None:
+    """Performs EDA on the specified dataset.
 
     Args:
-        case (str): The test case identifier (e.g., "01", "07", "20").
-        output (str): The directory to store analysis reports.
+        sample (bool): Use the predefined REDCap sample dataset.
+        csv (str | None): Path to a user-provided dataset.
+        schema (str | None): Path to a schema file.
+        output (str): Directory to store analysis reports.
     """
-    logger.info(f"🔍 Loading Case {case}...")
+    if csv and sample:
+        logger.error("❌ Cannot specify both `--sample` and `--csv`. Choose one.")
+        return
+
+    if not csv and not sample:
+        logger.info(
+            "📊 No dataset specified, defaulting to REDCap test sample (Case 01).",
+        )
+        sample = True
+
+    dataset_source = "Sample Dataset" if sample else csv
+    logger.info(f"📂 Dataset source: {dataset_source}")
 
     try:
-        df = load_data()
+        # Load the dataset
+        df = load_data(sample=sample, csv_path=csv)
 
-        logger.info("✅ Proceeding with analysis of available records.")
+        # Initialize SchemaHandler
+        schema_handler = SchemaHandler(schema)
 
-        df, report = enforce_schema(df)
+        # Handle schema enforcement
+        schema_handler.load_or_create_schema(df, csv_path=csv or "")
+
+        df, report = schema_handler.enforce_schema(df)
 
         # Run EDA with output directory
         eda = ExploratoryDataAnalysis(df, output_dir=output)

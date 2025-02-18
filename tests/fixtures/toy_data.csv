@@ -1,0 +1,6 @@
+toy_object,toy_int,toy_datetime,toy_float,toy_category,toy_text
+"A.png",1,2024-02-17,3.14,"Category1","Hello world!"
+"B.png",2,2023-08-05,2.71,"Category2","Testing schema"
+"C.jpg",3,2022-06-30,1.61,"Category1","This is a test"
+"D.mp4",4,2021-12-25,0.99,"Category3","Exploring text"
+"E.pdf",5,2020-07-04,42.0,"Category2","Another example"
