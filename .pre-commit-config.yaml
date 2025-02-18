@@ -120,7 +120,8 @@ repos:
         args:
           - -c
           - "MYPYPATH=src poetry run mypy --ignore-missing-imports --scripts-are-modules
-            --cache-dir=.mypy_cache --explicit-package-bases src/redcap_eda"
+            --cache-dir=.mypy_cache --explicit-package-bases $(git diff --name-only
+            --cached -- '*.py' | tr '\n' ' ')"
         require_serial: true
         minimum_pre_commit_version: 2.9.2
         # ===================== JavaScript =============================

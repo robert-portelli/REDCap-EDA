@@ -16,20 +16,16 @@ Modules
 -------
 - `cli`            - Command-line interface for interacting with REDCap-EDA.
 - `load_case_data` - Functions for loading REDCap datasets.
-- `analysis`       - Statistical and exploratory data analysis functions.
-- `visualization`  - Tools for generating plots and visual summaries.
 - `logger`         - Logging utilities for tracking analysis steps.
 """
 
 # Import all submodules for direct access
-from redcap_eda import cli, load_case_data, analysis, visualization, logger, cast_schema
+from redcap_eda import cli, load_case_data, logger, cast_schema
 
 # Define what is accessible via "from redcap_eda import *"
 __all__ = [
     "cli",
     "load_case_data",
-    "analysis",
-    "visualization",
     "logger",
     "cast_schema",
 ]

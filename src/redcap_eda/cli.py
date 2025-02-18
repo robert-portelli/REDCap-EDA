@@ -2,22 +2,20 @@ import click
 from redcap_eda.load_case_data import load_data
 from redcap_eda.logger import logger, set_log_level
 from redcap_eda.cast_schema import enforce_schema
-from redcap_eda.analysis import (
-    check_data_quality,
-    compute_summary_statistics,
-    compute_correlations,
-)
-from redcap_eda.visualization import (
-    plot_histogram,
-    plot_boxplot,
-    plot_correlation_matrix,
-)
+from redcap_eda.analysis.eda import ExploratoryDataAnalysis
 
 
 @click.group()
 @click.option("--debug", is_flag=True, help="Enable verbose debug logging")
-def cli(debug):
-    """REDCap-EDA: Perform Exploratory Data Analysis on REDCap datasets."""
+def cli(debug: bool) -> None:
+    """Command-line interface for REDCap-EDA.
+
+    This CLI tool loads REDCap datasets, applies schema casting,
+    and performs exploratory data analysis.
+
+    Args:
+        debug (bool): Enables verbose logging if set.
+    """
     set_log_level(debug)
 
 
@@ -27,82 +25,57 @@ def cli(debug):
     required=True,
     help="Specify the REDCap test case (e.g., 01, 07, 20)",
 )
-def analyze(case):
-    """Perform EDA on the specified REDCap test dataset."""
+@click.option(
+    "--output",
+    default="eda_reports",
+    help="Specify the directory to save reports",
+)
+def analyze(case: str, output: str) -> None:
+    """Performs EDA on the specified REDCap test dataset.
 
+    This function:
+    - Loads dataset corresponding to the given test case.
+    - Applies schema casting for strict data types.
+    - Runs exploratory data analysis (EDA).
+    - Saves visualizations and reports to the specified output directory.
+
+    Args:
+        case (str): The test case identifier (e.g., "01", "07", "20").
+        output (str): The directory to store analysis reports.
+    """
     logger.info(f"🔍 Loading Case {case}...")
 
     try:
-        # Load datasets (handling missing data)
-        if not (df := load_data()):
-            logger.error(f"❌ Case {case} lacks records for analysis.")
-            return
+        df = load_data()
 
         logger.info("✅ Proceeding with analysis of available records.")
 
-        # --- Apply Schema Casting ---
-        logger.info("🔎 Identifying and converting columns based on schema...")
         df, report = enforce_schema(df)
-
-        # Log schema mutation report
         logger.info("\n📜 Data Type Conversion Report:\n%s", report.to_string())
 
-        # --- Data Inspection (Post-Casting) ---
-        logger.info("📊 Updated Data Characteristics:")
-        df.info()
-        logger.info("\n📌 Summary Statistics:\n%s", df.describe().to_string())
-        logger.info("\n🔹 Sample Records:\n%s", df.head(n=5).to_string())
+        # Run EDA with output directory
+        eda = ExploratoryDataAnalysis(df, output_dir=output)
+        eda_report = eda.explore()
 
-        # --- Data Analysis ---
-        logger.info("🔎 Running data quality check...")
-        quality_report = check_data_quality(df)
-        logger.info(f"Data Quality Report:\n{quality_report}")
+        logger.debug("\n📜 EDA Report:\n%s", eda_report)
 
-        logger.info("📊 Computing summary statistics...")
-        summary_stats = compute_summary_statistics(df)
-        logger.info(f"Summary Statistics:\n{summary_stats}")
-
-        logger.info("🔗 Computing correlations...")
-        correlations = compute_correlations(df)
-        logger.info(f"Correlation Matrix:\n{correlations}")
-
-        # --- Data Visualization ---
-        process_visualizations(df)
-
+    except FileNotFoundError as e:
+        logger.critical(f"❌ Dataset file not found: {e}")
+    except ValueError as e:
+        logger.warning(f"⚠️ Data integrity issue detected: {e}")
     except Exception as e:
-        logger.error(f"❌ Error: {e}")
+        logger.exception(f"🚨 Unexpected error occurred: {e}")
 
 
-def log_data_preview(data):
-    """Logs preview of datasets if available."""
-    for key, value in data.items():
-        preview = value.head() if value is not None else "Not available"
-        logger.debug(f"📊 {key.upper()} Preview:\n{preview}")
-
-
-def process_visualizations(df):
-    """Handles visualization generation if numeric columns exist."""
-    numeric_cols = df.select_dtypes(include=["number"]).columns
-
-    if not numeric_cols.any():
-        logger.warning("⚠️ No numeric columns found for visualization.")
-        return
-
-    logger.info("📈 Generating visualizations...")
-
-    for col in numeric_cols[:3]:  # Limit to 3 columns for brevity
-        logger.debug(f"Generating histogram for {col}...")
-        plot_histogram(df, col)
-
-        logger.debug(f"Generating boxplot for {col}...")
-        plot_boxplot(df, col)
-
-    logger.debug("Generating correlation heatmap...")
-    plot_correlation_matrix(df)
+@click.command()
+def list_cases() -> None:
+    """Lists available REDCap test cases."""
+    logger.info("📂 Available test cases: ['01',]")
 
 
 # Register CLI commands
 cli.add_command(analyze)
+cli.add_command(list_cases)
 
 if __name__ == "__main__":
     cli()
