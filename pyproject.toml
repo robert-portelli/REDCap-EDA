@@ -10,7 +10,10 @@ requires-python = ">=3.13"
 dependencies = [
     "pandas (>=2.2.3,<3.0.0)",
     "click (>=8.1.8,<9.0.0)",
-    "requests (>=2.32.3,<3.0.0)"
+    "requests (>=2.32.3,<3.0.0)",
+    "wordcloud (>=1.9.4,<2.0.0)",
+    "tqdm (>=4.67.1,<5.0.0)",
+    "numpy (>=2.2.3,<3.0.0)"
 ]
 
 [tool.poetry]
