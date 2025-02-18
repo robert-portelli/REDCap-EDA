@@ -16,19 +16,17 @@
     ```
 """
 
-from collections import namedtuple
 import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
 from redcap_eda.logger import logger
+from redcap_eda.analysis.lib import AnalysisResult
 
 
 class CategoricalAnalysisMixin:
     """Mixin for categorical column analysis."""
 
     __slots__ = ()
-
-    AnalysisResult = namedtuple("AnalysisResult", ["summary", "plots"])
 
     @staticmethod
     def categorize(series: pd.Series) -> AnalysisResult:
@@ -39,10 +37,11 @@ class CategoricalAnalysisMixin:
 
         Returns:
             AnalysisResult: Named tuple containing summary statistics and plots.
+            #AnalysisResult = namedtuple("AnalysisResult", ["summary", "plots"])
         """
         if series.empty:
             logger.warning(f"⚠️ Skipping empty categorical column: {series.name}")
-            return CategoricalAnalysisMixin.AnalysisResult(
+            return AnalysisResult(
                 summary={"error": "Column is empty"},
                 plots=[],
             )
@@ -67,7 +66,7 @@ class CategoricalAnalysisMixin:
             CategoricalAnalysisMixin.plot_category_distribution(series),
         ]
 
-        return CategoricalAnalysisMixin.AnalysisResult(summary, plots)
+        return AnalysisResult(summary, plots)
 
     @staticmethod
     def plot_category_distribution(series: pd.Series) -> tuple[plt.Figure | None, str]:

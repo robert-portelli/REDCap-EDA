@@ -16,19 +16,17 @@
     ```
 """
 
-from collections import namedtuple
 import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
 from redcap_eda.logger import logger
+from redcap_eda.analysis.lib import AnalysisResult
 
 
 class NumericalAnalysisMixin:
     """Mixin for numerical analysis."""
 
     __slots__ = ()
-
-    AnalysisResult = namedtuple("AnalysisResult", ["summary", "plots"])
 
     @staticmethod
     def summarize(series: pd.Series) -> AnalysisResult:
@@ -39,10 +37,11 @@ class NumericalAnalysisMixin:
 
         Returns:
             AnalysisResult: Named tuple containing summary statistics and plots.
+            #AnalysisResult = namedtuple("AnalysisResult", ["summary", "plots"])
         """
         if series.empty:
             logger.warning(f"⚠️ Skipping empty numerical column: {series.name}")
-            return NumericalAnalysisMixin.AnalysisResult(
+            return AnalysisResult(
                 summary={"error": "Column is empty"},
                 plots=[],
             )
@@ -63,7 +62,7 @@ class NumericalAnalysisMixin:
             NumericalAnalysisMixin.plot_boxplot(series),
         ]
 
-        return NumericalAnalysisMixin.AnalysisResult(summary, plots)
+        return AnalysisResult(summary, plots)
 
     @staticmethod
     def detect_outliers(series):

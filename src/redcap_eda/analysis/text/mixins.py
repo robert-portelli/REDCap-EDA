@@ -17,20 +17,19 @@
     ```
 """
 
-from collections import namedtuple, Counter
+from collections import Counter
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 from wordcloud import WordCloud
 from redcap_eda.logger import logger
+from redcap_eda.analysis.lib import AnalysisResult
 
 
 class TextAnalysisMixin:
     """Mixin for analyzing text-based data."""
 
     __slots__ = ()
-
-    AnalysisResult = namedtuple("AnalysisResult", ["summary", "plots"])
 
     @staticmethod
     def analyze_text(series: pd.Series) -> AnalysisResult:
@@ -41,10 +40,11 @@ class TextAnalysisMixin:
 
         Returns:
             AnalysisResult: Named tuple containing summary statistics and plots.
+            #AnalysisResult = namedtuple("AnalysisResult", ["summary", "plots"])
         """
         if series.empty:
             logger.warning(f"⚠️ Skipping empty text column: {series.name}")
-            return TextAnalysisMixin.AnalysisResult(
+            return AnalysisResult(
                 summary={"error": "Column is empty"},
                 plots=[],
             )
@@ -66,7 +66,7 @@ class TextAnalysisMixin:
             TextAnalysisMixin.generate_wordcloud(series),
         ]
 
-        return TextAnalysisMixin.AnalysisResult(summary, plots)
+        return AnalysisResult(summary, plots)
 
     @staticmethod
     def plot_text_length_distribution(
