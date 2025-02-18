@@ -55,6 +55,9 @@ def load_data(case="01", dataset_name="records_api"):
         response.raise_for_status()  # Ensure HTTP errors are raised
 
         df = pd.read_csv(url)
+        if df.empty:
+            raise ValueError(f"❌ Dataset {dataset_name} for case {case} is empty.")
+
         logger.info(f"✅ Successfully loaded {dataset_name} for Case {case}")
         return df
 
