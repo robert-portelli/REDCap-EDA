@@ -51,7 +51,6 @@ def analyze(case: str, output: str) -> None:
         logger.info("✅ Proceeding with analysis of available records.")
 
         df, report = enforce_schema(df)
-        logger.info("\n📜 Data Type Conversion Report:\n%s", report.to_string())
 
         # Run EDA with output directory
         eda = ExploratoryDataAnalysis(df, output_dir=output)
