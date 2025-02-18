@@ -30,6 +30,7 @@ from redcap_eda.logger import logger
 from redcap_eda.analysis.numerical.mixins import NumericalAnalysisMixin
 from redcap_eda.analysis.categorical.mixins import CategoricalAnalysisMixin
 from redcap_eda.analysis.text.mixins import TextAnalysisMixin
+from redcap_eda.analysis.datetime.mixins import DatetimeAnalysisMixin
 from redcap_eda.analysis.lib import AnalysisResult
 
 
@@ -37,6 +38,7 @@ class ExploratoryDataAnalysis(
     NumericalAnalysisMixin,
     CategoricalAnalysisMixin,
     TextAnalysisMixin,
+    DatetimeAnalysisMixin,
 ):
     """Performs Exploratory Data Analysis (EDA) on a DataFrame."""
 
@@ -62,6 +64,8 @@ class ExploratoryDataAnalysis(
 
         try:
             products: AnalysisResult  # declare to soothe mypy no-redef
+            logger.debug(f"🔍 Column '{col}' detected as type '{dtype}'")
+
             match dtype:
                 case "int64" | "float64":
                     products = super().summarize(self.df[col])
@@ -71,6 +75,9 @@ class ExploratoryDataAnalysis(
 
                 case _ if "string" in dtype:  # handles string[python]
                     products = super().analyze_text(self.df[col])
+
+                case _ if "datetime" in dtype:  # handles datetime64[ns]
+                    products = super().analyze_datetime(self.df[col])
 
                 case _:
                     return {col: {"message": f"Skipped analysis for {dtype} columns"}}
