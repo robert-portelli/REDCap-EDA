@@ -1,3 +1,6 @@
+# Exclude project generated reports
+eda_reports/
+
 # Exclude backup files
 *~ #nano backups
 *.bak
