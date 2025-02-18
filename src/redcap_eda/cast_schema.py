@@ -1,186 +1,216 @@
-"""
-📌 cast_schema.py: Enforces strict data type conversion based on a predefined schema.
-
-🔹 Purpose:
-    - Ensures all DataFrame columns conform to expected data types.
-    - Prevents unintended implicit conversions and enforces strict typing.
-    - Fails explicitly if data does not match the expected format.
-
-🔹 Design Decisions:
-    - Uses a `namedtuple` to enforce a **rigid** schema (no dynamic modifications).
-    - Raises errors instead of coercing invalid data (to flag issues in upstream cleaning).
-    - Logs conversion details and failures for debugging.
-    - Does **not** handle data cleaning or validation (assumes pre-cleaned input).
-
-🔹 Assumptions:
-    - Data **must** be pre-cleaned and validated before passing to this module.
-    - Schema is static in the MVP but may become configurable later.
-
-🔹 Usage:
-    ```python
-    import cast_schema
-    df, report = cast_schema.enforce_schema(df)
-    ```
-
-🔹 Future Considerations:
-    - Consider supporting a configurable schema via a YAML/JSON file.
-    - Investigate migrating to a `dataclass` if flexibility is required.
-    - Implement automatic detection of unexpected columns with logging alerts.
-"""
-
-from collections import namedtuple
+import os
+import json
+import yaml
+import datetime
 import pandas as pd
-import json  # You can replace this with yaml for YAML config files
 from redcap_eda.logger import logger
 
-# Define NamedTuple for Schema: namedtuple(<"name">, [<"field">, <"names">, <"act_as">, "<keys>"])
-# Values are assigned later
-Schema = namedtuple(
-    "Schema",
-    ["datetime", "time", "string", "category", "integer", "float", "object"],
-)
+"""
+📌 SchemaHandler: Manages schema enforcement and interactive schema creation for REDCap-EDA.
+
+🔹 **Capabilities**:
+    - Loads schema from JSON or YAML.
+    - Interactively creates a schema if none is provided.
+    - Enforces schema on a DataFrame to ensure correct data types.
+
+🔹 **Example Usage**:
+    ```python
+    schema_handler = SchemaHandler()
+    schema_handler.load_or_create_schema(df)
+    df, report = schema_handler.enforce_schema(df)
+    ```
+"""
 
 
-# Load schema dynamically (Replace this with a YAML or API call if needed)
-def load_schema(schema_file=None):
-    """
-    Load schema mapping from a JSON/YAML file or use a default schema.
+class SchemaHandler:
+    """Handles schema enforcement and interactive schema creation."""
 
-    Args:
-        schema_file (str, optional): Path to schema file. Defaults to None.
+    DTYPE_OPTIONS = {
+        "int64": "Whole numbers (e.g., 1, 2, 3). No decimals.",
+        "float64": "Decimal numbers (e.g., 3.14, 42.0, -0.99).",
+        "bool": "True/False or Yes/No values.",
+        "string": "Text data (e.g., names, emails, IDs).",
+        "category": "Limited set of unique labels (e.g., Male/Female, Small/Medium/Large).",
+        "datetime64[ns]": "Timestamps or dates (e.g., 2024-02-17, 12:30 PM).",
+        "timedelta64[ns]": "Time differences (e.g., 5 days, 3 hours).",
+        "object": "Mixed data types, unstructured text, or complex objects.",
+    }
 
-    Returns:
-        Schema (NamedTuple): Loaded schema mapping.
-    """
-    try:
-        if schema_file:
-            logger.info(f"📥 Loading schema from file: {schema_file}")
-            with open(schema_file) as f:
-                schema_data = json.load(
-                    f,
-                )  # Replace with yaml.safe_load(f) if using YAML
-            return Schema(**schema_data)
+    def __init__(self, schema_path: str | None = None):
+        """
+        Initializes SchemaHandler.
 
-        logger.info("📝 Using default schema for type enforcement.")
+        Args:
+            schema_path (str, optional): Path to an existing schema file (JSON/YAML).
+        """
+        self.schema_path = schema_path
+        self.schema: dict[str, str] = {}
 
-        schema = Schema(
-            datetime=(
-                "dob",
-                "surgery_date",
-                "date_dmy",
-                "date_mdy",
-                "date_ymd",
-                "datetime_dmyhm",
-                "datetime_mdyhm",
-                "datetime_ymdhm",
-                "datetime_dmyhms",
-                "datetime_mdyhms",
-                "datetime_ymdhms",
-            ),
-            time=("time",),
-            string=("email", "phone", "notes", "unvalidated_text"),
-            category=("dropdown_character", "dropdown_mixed"),
-            integer=("checkbox___1", "checkbox___2", "yes_no", "true_false"),
-            float=("bmi", "age_at_survey"),
-            object=("signature_draw", "file_upload"),
-        )
-        # 🚨 Detect if any field is mistakenly set as a string instead of a tuple
-        for field_name in schema._fields:
-            if isinstance(getattr(schema, field_name), str):
-                raise TypeError(
-                    f"❌ Schema definition error: '{field_name}' must be a tuple, but it's a string!",
-                )
+    def load_schema(self) -> dict:
+        """
+        Loads a schema from a JSON or YAML file.
 
-        return schema
+        Returns:
+            dict: The loaded schema.
 
-    except Exception as e:
-        logger.critical(f"❌ CRITICAL: Error loading schema: {e}")
-        raise
+        Raises:
+            ValueError: If the file format is unsupported or fails to load.
+        """
+        if not self.schema_path:
+            logger.warning("⚠️ No schema provided. Proceeding without type enforcement.")
+            return {}
 
+        try:
+            if self.schema_path.endswith(".json"):
+                with open(self.schema_path) as f:
+                    self.schema = json.load(f)
+            elif self.schema_path.endswith((".yaml", ".yml")):
+                with open(self.schema_path) as f:
+                    self.schema = yaml.safe_load(f)
+            else:
+                raise ValueError(f"Unsupported schema format: {self.schema_path}")
 
-def enforce_schema(df, schema=None):
-    """
-    Applies predefined data types to columns based on a NamedTuple schema.
+            logger.info(f"📥 Loaded schema from {self.schema_path}")
+            return self.schema
 
-    - Raises an error if any column has an invalid format.
-    - Does not handle data cleaning—assumes input is already cleaned.
-    - Ensures all `object` columns are converted to an explicit type.
-    - Logs critical issues when data does not conform.
+        except (FileNotFoundError, json.JSONDecodeError, yaml.YAMLError) as e:
+            logger.error(f"❌ Failed to load schema from {self.schema_path}: {e}")
+            raise ValueError(f"Invalid schema file: {e}")
 
-    Args:
-        df (pd.DataFrame): The input DataFrame.
-        schema (Schema, optional): Preloaded schema. If None, loads a default schema.
+    def enforce_schema(self, df: pd.DataFrame) -> tuple[pd.DataFrame, dict]:
+        """
+        Applies a schema to a DataFrame for data type enforcement.
 
-    Returns:
-        pd.DataFrame, pd.DataFrame: The mutated DataFrame and a receipt of changes.
-    """
+        Args:
+            df (pd.DataFrame): The dataset to process.
 
-    try:
-        if schema is None:
-            schema = load_schema()
+        Returns:
+            tuple[pd.DataFrame, dict]: The updated DataFrame and a report of conversions.
 
-        logger.info("🔍 Analyzing DataFrame types before conversion...")
-        before = df.dtypes.copy()
-
-        # Track object columns that should have been converted
-        untyped_columns = set(df.select_dtypes(include=["object"]).columns)
-
-        # Iterate over schema and apply transformations
-        for field_name in schema._fields:
-            for col in getattr(schema, field_name):
-                if col in df.columns:
-                    logger.debug(f"🔄 Converting '{col}' to {field_name} type.")
-
-                    try:
-                        match field_name:
-                            case "datetime":
-                                df[col] = pd.to_datetime(df[col], errors="raise")
-                            case "time":
-                                df[col] = pd.to_datetime(
-                                    df[col],
-                                    format="%H:%M",
-                                    errors="raise",
-                                ).dt.time
-                            case "string":
-                                df[col] = df[col].astype("string")
-                            case "category":
-                                df[col] = df[col].astype("category")
-                            case "integer":
-                                df[col] = df[col].astype("int64")
-                            case "float":
-                                df[col] = df[col].astype("float64")
-                            case "object":
-                                # Explicitly allow these columns to remain as `object`
-                                logger.debug(
-                                    f"✅ Allowed column '{col}' to remain as object.",
-                                )
-
-                        # Remove from untyped list after successful processing
-                        untyped_columns.discard(col)
-
-                    except Exception as e:
-                        logger.critical(
-                            f"❌ CRITICAL: Failed to convert column '{col}' to {field_name}. Possible invalid data format. Error: {e}",
-                        )
-                        raise
-
-        # Final validation: Ensure no unexpected `object` columns remain
-        expected_objects = set(schema.object) if hasattr(schema, "object") else set()
-        unexpected_objects = untyped_columns - expected_objects
-
-        if unexpected_objects:
+        Raises:
+            ValueError: If the schema is invalid.
+        """
+        if not self.schema:
             logger.warning(
-                "⚠️ The following columns remain untyped (object type detected) but were not explicitly listed in the schema:\n%s",
-                list(unexpected_objects),
+                "⚠️ No schema available. Proceeding without data type enforcement.",
             )
+            return df, {}
 
-        # Create mutation receipt
-        receipt = pd.DataFrame({"Before": before, "After": df.dtypes})
+        conversion_report = {}
 
-        logger.info("\n📜 Data Type Conversion Summary:\n%s", receipt.to_string())
+        for column, dtype in self.schema.items():
+            if column in df.columns:
+                try:
+                    df[column] = df[column].astype(dtype)
+                    conversion_report[column] = f"Converted to {dtype}"
+                except ValueError as e:
+                    logger.warning(f"⚠️ Failed to convert {column} to {dtype}: {e}")
+                    conversion_report[column] = f"Conversion failed: {e}"
+            else:
+                logger.warning(f"⚠️ Column {column} not found in dataset.")
 
-        return df, receipt
+        return df, conversion_report
 
-    except Exception as e:
-        logger.critical(f"❌ CRITICAL: Error during schema enforcement: {e}")
-        raise
+    def create_interactive_schema(
+        self,
+        df: pd.DataFrame,
+        csv_path: str | None = None,
+        output_dir: str = "schemas",
+    ) -> str:
+        """
+        Interactive prompt to define and save a schema.
+
+        Args:
+            df (pd.DataFrame): The dataset to analyze.
+            csv_path (str, optional): Path to the CSV file (used for naming the schema).
+            output_dir (str, optional): Directory to save the schema.
+
+        Returns:
+            str: The path to the saved schema file.
+        """
+        logger.info(
+            "📝 Interactive Schema Creation: Define data types for each column.",
+        )
+
+        # Ensure output directory exists
+        os.makedirs(output_dir, exist_ok=True)
+
+        # Determine recommended filename based on CSV name
+        if csv_path:
+            base_name = os.path.splitext(os.path.basename(csv_path))[
+                0
+            ]  # Extract "mydata" from "mydata.csv"
+            suggested_filename = f"{output_dir}/{base_name}.json"
+        else:
+            timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+            suggested_filename = f"{output_dir}/schema_{timestamp}.json"
+
+        # Ask user to confirm or modify the filename
+        print(f"\n💾 Recommended schema filename: {suggested_filename}")
+        custom_filename = input(
+            "Press Enter to accept or provide a new filename: ",
+        ).strip()
+        schema_filename = custom_filename if custom_filename else suggested_filename
+
+        # Collect column type choices
+        self.schema = {}
+        for column in df.columns:
+            print(f"\n📌 Column: {column}")
+            print(f"   🔍 Detected Type: {df[column].dtype}")
+            print("   🔽 Choose a data type:")
+
+            for i, (dtype, hint) in enumerate(self.DTYPE_OPTIONS.items(), 1):
+                print(f"   {i}. {dtype} → {hint}")
+
+            while True:
+                choice = input(
+                    "   ➤ Enter number (press Enter to keep detected type): ",
+                ).strip()
+                if choice.isdigit() and 1 <= int(choice) <= len(self.DTYPE_OPTIONS):
+                    self.schema[column] = list(self.DTYPE_OPTIONS.keys())[
+                        int(choice) - 1
+                    ]
+                    break
+                elif choice == "":
+                    self.schema[column] = str(df[column].dtype)
+                    break
+                else:
+                    print("   ❌ Invalid choice. Please enter a valid number.")
+
+        # Save the schema
+        with open(schema_filename, "w") as f:
+            json.dump(self.schema, f, indent=4)
+
+        logger.info(f"✅ Schema saved as {schema_filename}")
+        return schema_filename
+
+    def load_or_create_schema(
+        self,
+        df: pd.DataFrame,
+        csv_path: str | None = None,
+    ) -> str:
+        """
+        Loads an existing schema or prompts for interactive creation.
+
+        Args:
+            df (pd.DataFrame): The dataset to analyze.
+            csv_path (str, optional): Path to the CSV file (used for schema naming).
+
+        Returns:
+            str: The schema file path.
+        """
+        if self.schema_path and os.path.exists(self.schema_path):
+            logger.info(f"📥 Loading schema from {self.schema_path}")
+            self.load_schema()
+            return self.schema_path
+        else:
+            logger.warning(
+                "⚠️ No existing schema found. Launching interactive schema creation.",
+            )
+            return self.create_interactive_schema(df, csv_path)
+
+
+# Example Usage:
+# schema_handler = SchemaHandler("path/to/schema.json")  # Provide schema path if available
+# schema_handler.load_or_create_schema(df)
+# df, report = schema_handler.enforce_schema(df)
