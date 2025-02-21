@@ -3,72 +3,53 @@
 ![CI Status](https://github.com/robertp/REDCap-EDA/actions/workflows/ci.yaml/badge.svg)
 
 ## 📌 Overview
-REDCap-EDA is a command-line tool for performing **Exploratory Data Analysis (EDA)** on **REDCap datasets**. It automates data inspection, schema enforcement, statistical analysis, and visualization.
+REDCap-EDA is a command-line tool for performing **Exploratory Data Analysis (EDA)** on **REDCap datasets**. It automates data inspection, schema enforcement, statistical analysis, visualization, and report generation.
 
 ## 🚀 Features
 - ✅ **Automatic Data Type Enforcement** (casts columns based on a predefined or user-defined schema)
 - 📊 **Summary Statistics** (mean, median, std dev, outliers, categorical distributions)
-- 📉 **Visualizations** (histograms, box plots, categorical distributions, time trends)
+- 📉 **Visualizations** (histograms, box plots, categorical distributions, time trends, word clouds)
+- 📂 **Comprehensive PDF Report Generation** with **UnifiedReport**
 - 🔄 **Multiprocessing for Faster Execution**
 - 🔍 **Progress Bars with `tqdm`**
-- 📂 **Exports Reports** (JSON, CSV, and saved visualizations)
+- 📂 **Exports Reports** (JSON, PDF, and saved visualizations)
 - 📝 **Interactive Schema Creation** for custom datasets
 
 ## 📦 Installation
 ```bash
-# Clone the repository
-git clone https://github.com/robertp/REDCap-EDA.git
-cd REDCap-EDA
-
-# Install dependencies using Poetry
-poetry install
+pip install redcap-eda
 ```
 
 ## 🛠️ Usage
 
 ### 🔹 Example Using the Sample Dataset and Interactive Schema Creation
 ```bash
-poetry run redcap-eda analyze --sample
+redcap-eda analyze --sample
 ```
 
 ### 🔹 Example Using the Sample Dataset with a Predefined Schema
 ```bash
-poetry run redcap-eda analyze --sample --schema schemas/schema_sample_dataset.json
+redcap-eda analyze --sample --schema schemas/schema_sample_dataset.json
 ```
 
 ### 🔹 Running EDA on a Custom Dataset with Interactive Schema Creation
 ```bash
-poetry run redcap-eda analyze --csv path/to/your_data.csv
+redcap-eda analyze --csv path/to/your_data.csv
 ```
 
 ### 🔹 Running EDA on a Custom Dataset with a Predefined Schema
 ```bash
-poetry run redcap-eda analyze --csv path/to/your_data.csv --schema path/to/schema.json
+redcap-eda analyze --csv path/to/your_data.csv --schema path/to/schema.json
 ```
 
 ### 🔹 Running in Debug Mode
 ```bash
-poetry run redcap-eda --debug analyze --sample
+redcap-eda --debug analyze --sample
 ```
 
 ### 🔹 Listing Available Test Cases
 ```bash
-poetry run redcap-eda list-cases
-```
-
-### 🔹 Interactive Testing with Makefile
-```bash
-# Explore a text-based column
-make test-text
-
-# Analyze numerical data
-make test-numeric
-
-# Inspect categorical variables
-make test-categorical
-
-# Run full exploratory analysis interactively
-make test-eda
+redcap-eda list-cases
 ```
 
 ## 📂 Project Structure
@@ -76,6 +57,7 @@ make test-eda
 .
 ├── Makefile                # Helper commands
 ├── README.md               # Project documentation
+├── dist                    # Distribution files for PyPI
 ├── mypy.ini                # Type checking configuration
 ├── poetry.lock             # Poetry dependency lock file
 ├── pyproject.toml          # Poetry project configuration
@@ -85,26 +67,25 @@ make test-eda
 │   ├── logs
 │   │   └── redcap_eda.log  # Log files
 │   └── redcap_eda
-│       ├── __init__.py
 │       ├── analysis        # EDA analysis modules
-│       │   ├── __init__.py
 │       │   ├── categorical
-│       │   │   ├── __init__.py
-│       │   │   └── mixins.py
+│       │   │   └── mixins.py # Categorical data analysis
 │       │   ├── datetime
-│       │   │   ├── __init__.py
-│       │   │   └── mixins.py
+│       │   │   └── mixins.py # Datetime data analysis
 │       │   ├── eda.py      # Main EDA module
+│       │   ├── json_report_handler.py # JSON export utility
+│       │   ├── lib.py       # Shared data structures (e.g., AnalysisResult)
+│       │   ├── missing
+│       │   │   └── mixins.py # Missing data analysis
 │       │   ├── numerical
-│       │   │   ├── __init__.py
-│       │   │   └── mixins.py
+│       │   │   └── mixins.py # Numerical data analysis
 │       │   └── text
-│       │       ├── __init__.py
-│       │       └── mixins.py
+│       │       └── mixins.py # Text data analysis
 │       ├── cast_schema.py  # Schema enforcement
 │       ├── cli.py          # Command-line interface
 │       ├── load_case_data.py # Dataset loader
 │       ├── logger.py       # Logging utilities
+│       └── unified_report.py # PDF report generation
 └── tests                   # Unit tests
     ├── __init__.py
     └── fixtures

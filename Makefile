@@ -55,7 +55,7 @@ test:
 
 # 🌳 Show project structure
 tree:
-	@tree --prune -I "*~|__pycache__|eda_reports|*.bak"
+	@tree --prune -I "*~|__pycache__|eda_reports|*.bak|eda_test_run"
 
 # 📊 Test TextAnalysisMixin interactively
 test-text:
