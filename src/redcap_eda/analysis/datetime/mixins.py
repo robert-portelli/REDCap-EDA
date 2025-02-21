@@ -16,6 +16,7 @@
     ```
 """
 
+import os
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
@@ -29,14 +30,15 @@ class DatetimeAnalysisMixin:
     __slots__ = ()
 
     @staticmethod
-    def analyze_datetime(series: pd.Series) -> AnalysisResult:
+    def analyze_datetime(series: pd.Series, output_dir: str) -> AnalysisResult:
         """Analyzes datetime columns & generates time-based visualizations.
 
         Args:
             series (pd.Series): The datetime series to analyze.
+            output_dir (str): The directory to save the plot.
 
         Returns:
-            AnalysisResult: Named tuple containing summary statistics and plots.
+            AnalysisResult: Named tuple containing summary statistics and plot_paths.
         """
         logger.debug(f"🕒 Analyzing datetime column: {series.name}")
 
@@ -44,18 +46,18 @@ class DatetimeAnalysisMixin:
             logger.warning(f"⚠️ Skipping empty datetime column: {series.name}")
             return AnalysisResult(
                 summary={"error": "Column is empty"},
-                plots=[],
+                plot_paths=[],
             )
 
         if not pd.api.types.is_datetime64_any_dtype(series):
             logger.warning(f"⚠️ Column {series.name} is not a datetime type.")
             return AnalysisResult(
                 summary={"error": "Not a valid datetime column"},
-                plots=[],
+                plot_paths=[],
             )
 
         # Compute summary statistics
-        summary = {
+        stats = {
             "earliest": series.min(),
             "latest": series.max(),
             "time_span": str(series.max() - series.min()),
@@ -66,73 +68,85 @@ class DatetimeAnalysisMixin:
             "hour_counts": series.dt.hour.value_counts().to_dict(),
         }
 
+        summary = (f"Datetime Analysis of {series.name}", stats)
+
         # Generate plots
-        plots = [
-            DatetimeAnalysisMixin.plot_datetime_distribution(series),
-            DatetimeAnalysisMixin.plot_time_trend(series),
+        plot_paths = [
+            DatetimeAnalysisMixin.plot_datetime_distribution(series, output_dir),
+            DatetimeAnalysisMixin.plot_time_trend(series, output_dir),
         ]
 
-        return AnalysisResult(summary, plots)
+        return AnalysisResult(summary, plot_paths)
 
     @staticmethod
-    def plot_datetime_distribution(series: pd.Series) -> tuple[plt.Figure | None, str]:
+    def plot_datetime_distribution(series: pd.Series, output_dir: str) -> str:
         """Plots a histogram of datetime values.
 
         Args:
             series (pd.Series): The datetime series to plot.
+            output_dir (str): The directory to save the plot.
 
         Returns:
-            tuple[plt.Figure, str]: The figure object and filename.
+            str: the file path to the saved figure
         """
         if series.empty:
             logger.warning(
                 f"⚠️ No data available for datetime distribution: {series.name}",
             )
-            return None, ""
-        try:
-            fig, ax = plt.subplots(figsize=(8, 4))
-            sns.histplot(series, bins=30, kde=True, ax=ax, color="blue")
-            ax.set_title(f"Datetime Distribution of {series.name}")
-            ax.set_xlabel("Timestamp")
-            ax.set_ylabel("Frequency")
+            return ""
 
-            filename = f"{series.name}_datetime_distribution.png"
-            return fig, filename
+        fig, ax = plt.subplots(figsize=(8, 4))
+        sns.histplot(series, bins=30, kde=True, ax=ax, color="blue")
+        ax.set_title(f"Datetime Distribution of {series.name}")
+        ax.set_xlabel("Timestamp")
+        ax.set_ylabel("Frequency")
 
-        except Exception as e:
-            logger.error(
-                f"❌ Error generating datetime distribution for {series.name}: {e}",
-            )
-            return None, ""
+        filename = f"{series.name}_datetime_distribution.png"
+        plot_path = os.path.join(output_dir, filename)
+        fig.savefig(plot_path)
+        plt.close(fig)
+
+        if os.path.exists(plot_path):
+            logger.info(f"✅ Datetime Distribution saved as {plot_path}")
+            return plot_path
+        else:
+            logger.warning(f"❌ Failed to save Datetime Distribution at: {plot_path}")
+            return ""
 
     @staticmethod
-    def plot_time_trend(series: pd.Series) -> tuple[plt.Figure | None, str]:
+    def plot_time_trend(series: pd.Series, output_dir: str) -> str:
         """Plots a line chart showing time-based trends.
 
         Args:
             series (pd.Series): The datetime series to plot.
+            output_dir (str): The directory to save the plot.
 
         Returns:
-            tuple[plt.Figure, str]: The figure object and filename.
+            str: the file path to the saved figure
         """
         if series.empty:
             logger.warning(f"⚠️ No data available for time trend: {series.name}")
-            return None, ""
-        try:
-            df = pd.DataFrame({series.name: series})
-            df = df.set_index(series.name)
-            df["count"] = 1
-            df = df.resample("D").sum()
-            fig, ax = plt.subplots(figsize=(10, 5))
-            ax.plot(df.index, df["count"], marker="o", linestyle="-", color="blue")
-            ax.set_title(f"Time Trend of {series.name}")
-            ax.set_xlabel("Date")
-            ax.set_ylabel("Count of Records")
-            ax.grid()
+            return ""
 
-            filename = f"{series.name}_time_trend.png"
-            return fig, filename
+        df = pd.DataFrame({series.name: series})
+        df = df.set_index(series.name)
+        df["count"] = 1
+        df = df.resample("D").sum()
+        fig, ax = plt.subplots(figsize=(10, 5))
+        ax.plot(df.index, df["count"], marker="o", linestyle="-", color="blue")
+        ax.set_title(f"Time Trend of {series.name}")
+        ax.set_xlabel("Date")
+        ax.set_ylabel("Count of Records")
+        ax.grid()
 
-        except Exception as e:
-            logger.error(f"❌ Error generating time trend plot for {series.name}: {e}")
-            return None, ""
+        filename = f"{series.name}_time_trend.png"
+        plot_path = os.path.join(output_dir, filename)
+        fig.savefig(plot_path)
+        plt.close(fig)
+
+        if os.path.exists(plot_path):
+            logger.info(f"✅ Time trend saved as {plot_path}")
+            return plot_path
+        else:
+            logger.warning(f"❌ Failed to save Time trend at: {plot_path}")
+            return ""

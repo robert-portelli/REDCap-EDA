@@ -1,5 +1,6 @@
 # Exclude project generated reports
 eda_reports/
+tests/eda_test_run
 
 # Exclude backup files
 *~ #nano backups

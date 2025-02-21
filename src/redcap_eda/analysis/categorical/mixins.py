@@ -5,17 +5,9 @@
     - Computes **category counts** and **proportions**.
     - Identifies **most/least frequent categories**.
     - Generates **bar plots** for category distribution.
-
-🔹 **Example Usage**:
-    ```python
-    from redcap_eda.analysis.categorical.mixins import CategoricalAnalysisMixin
-    class MyClass(CategoricalAnalysisMixin):
-        pass
-    obj = MyClass()
-    obj.categorize(df["category_column"])
-    ```
 """
 
+import os
 import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
@@ -29,26 +21,27 @@ class CategoricalAnalysisMixin:
     __slots__ = ()
 
     @staticmethod
-    def categorize(series: pd.Series) -> AnalysisResult:
+    def categorize(series: pd.Series, output_dir: str) -> AnalysisResult:
         """Analyzes categorical columns.
 
         Args:
             series (pd.Series): The categorical series to analyze.
+            output_dir (str): The directory to save output files.
 
         Returns:
-            AnalysisResult: Named tuple containing summary statistics and plots.
-            #AnalysisResult = namedtuple("AnalysisResult", ["summary", "plots"])
+            AnalysisResult: Named tuple containing summary statistics and plot_paths.
+            #AnalysisResult = namedtuple("AnalysisResult", ["summary", "plot_paths"])
         """
         if series.empty:
             logger.warning(f"⚠️ Skipping empty categorical column: {series.name}")
             return AnalysisResult(
-                summary={"error": "Column is empty"},
-                plots=[],
+                summary=("Categorical Analysis", {"error": "Column is empty"}),
+                plot_paths=[],
             )
 
         category_counts = series.value_counts()
 
-        summary = {
+        stats = {
             "unique_values": series.nunique(),
             "missing_values": series.isnull().sum(),
             "mode": category_counts.idxmax() if not category_counts.empty else None,
@@ -62,31 +55,43 @@ class CategoricalAnalysisMixin:
             "category_proportions": (category_counts / len(series)).to_dict(),
         }
 
-        plots = [
-            CategoricalAnalysisMixin.plot_category_distribution(series),
+        summary = (f"Categorical Analysis of {series.name}", stats)
+
+        plot_paths = [
+            CategoricalAnalysisMixin.plot_category_distribution(series, output_dir),
         ]
 
-        return AnalysisResult(summary, plots)
+        return AnalysisResult(summary, plot_paths)
 
     @staticmethod
-    def plot_category_distribution(series: pd.Series) -> tuple[plt.Figure | None, str]:
+    def plot_category_distribution(series: pd.Series, output_dir) -> str:
         """Creates a bar plot for categorical data.
 
         Args:
             series (pd.Series): The categorical series to plot.
+            output_dir (str): The directory to save the plot.
 
         Returns:
-            tuple[plt.Figure, str]: The figure object and filename.
+            str: The path to the saved figure.
         """
         if series.empty:
             logger.warning(
                 f"⚠️ No data available for category distribution: {series.name}",
             )
-            return None, ""
+            return ""
 
         fig, ax = plt.subplots(figsize=(8, 4))
         sns.countplot(y=series, order=series.value_counts().index, ax=ax)
         ax.set_title(f"Category Distribution of {series.name}")
 
         filename = f"{series.name}_category_distribution.png"
-        return fig, filename
+        plot_path = os.path.join(output_dir, filename)
+        fig.savefig(plot_path)
+        plt.close(fig)
+
+        if os.path.exists(plot_path):
+            logger.info(f"✅ Category Distribution saved as {plot_path}")
+            return plot_path
+        else:
+            logger.warning(f"❌ Failed to save Category Distribution at: {plot_path}")
+            return ""

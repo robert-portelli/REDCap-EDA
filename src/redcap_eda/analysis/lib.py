@@ -32,8 +32,8 @@ from collections import namedtuple
 🔹 **Example Usage**:
     ```python
     from redcap_eda.analysis.lib import AnalysisResult
-    result = AnalysisResult(summary={"mean": 42}, plots=[(fig, "plot.png")])
+    result = AnalysisResult(summary={"mean": 42}, plots=[("plot.png")])
     ```
 """
 
-AnalysisResult = namedtuple("AnalysisResult", ["summary", "plots"])
+AnalysisResult = namedtuple("AnalysisResult", ["summary", "plot_paths"])

@@ -15,12 +15,39 @@ run-csv:
 # 🛠️ Enter interactive Python session (CLI + Logging)
 it:
 	poetry run python -i -c "\
-	from redcap_eda import *; \
-	import importlib; \
-	logger.set_log_level(debug_mode=True); \
-	reload = importlib.reload; \
-	df = load_case_data.load_data(); \
-	df, report = cast_schema.enforce_schema(df)"
+import os; \
+from redcap_eda import *; \
+from redcap_eda.cast_schema import SchemaHandler; \
+import importlib; \
+from datetime import datetime; \
+from redcap_eda.unified_report import UnifiedReport; \
+from redcap_eda.load_case_data import load_data; \
+logger.set_log_level(debug_mode=True); \
+reload = importlib.reload; \
+output_dir = 'tests/eda_test_run'; \
+os.makedirs(output_dir, exist_ok=True); \
+dataset_source = 'TEST Sample Dataset'; \
+unified_report = UnifiedReport(output=output_dir, dataset_name='sample dataset'); \
+df = load_data(); \
+title_page_content = { \
+    'source': dataset_source, \
+    'rows': df.shape[0], \
+    'columns': df.shape[1], \
+    'schema': 'testing', \
+    'timestamp': datetime.utcnow().isoformat(), \
+}; \
+unified_report.load_title_page_content(title_page_content); \
+schema_handler = SchemaHandler('schemas/schema_sample_dataset.json'); \
+schema_handler.load_schema(); \
+df, schema_report = schema_handler.enforce_schema(df); \
+unified_report.load_schema_enforcement_page_content(schema_report); \
+from redcap_eda.analysis.eda import ExploratoryDataAnalysis; \
+eda = ExploratoryDataAnalysis(df, output=output_dir, unified_report=unified_report); \
+cat = eda.analyze_column('date_dmy'); \
+text = eda.analyze_column('notes'); \
+num = eda.analyze_column('zip'); \
+print(unified_report.analysis_pages)"
+
 
 # 📝 Run Pytest
 test:
@@ -28,7 +55,7 @@ test:
 
 # 🌳 Show project structure
 tree:
-	@tree --prune -I "*~|__pycache__|eda_reports|*.bak"
+	@tree --prune -I "*~|__pycache__|eda_reports|*.bak|eda_test_run"
 
 # 📊 Test TextAnalysisMixin interactively
 test-text:

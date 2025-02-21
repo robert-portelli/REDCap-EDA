@@ -1,8 +1,11 @@
+import os
+from datetime import datetime
 import click
 from redcap_eda.load_case_data import load_data
 from redcap_eda.logger import logger, set_log_level
 from redcap_eda.cast_schema import SchemaHandler
 from redcap_eda.analysis.eda import ExploratoryDataAnalysis
+from redcap_eda.unified_report import UnifiedReport
 
 
 @click.group()
@@ -59,12 +62,40 @@ def analyze(sample: bool, csv: str | None, schema: str | None, output: str) -> N
         )
         sample = True
 
+    # Ensure top-level directory exists
+    os.makedirs(output, exist_ok=True)
+
+    # Create a timestamped subdirectory for each run
+    timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+    output_dir = os.path.join(output, f"eda_{timestamp}")
+    os.makedirs(output_dir, exist_ok=True)
+
+    logger.info(f"📂 Using output directory: {output_dir}")
+
     dataset_source = "Sample Dataset" if sample else csv
     logger.info(f"📂 Dataset source: {dataset_source}")
+
+    # Initialize UnifiedReport for capturing dataset metadata & results
+    unified_report = UnifiedReport(
+        output=output_dir,
+        dataset_name=csv or "sample_dataset",
+    )
 
     try:
         # Load the dataset
         df = load_data(sample=sample, csv_path=csv)
+
+        # Capture dataset metadata for the title page
+        title_page_content = {
+            "source": dataset_source,
+            "rows": df.shape[0],
+            "columns": df.shape[1],
+            "schema": f"Provided by: {schema}" if schema else "Created Interactively",
+            "timestamp": datetime.utcnow().isoformat(),
+        }
+
+        # Feed the title page content to the UnifiedReport instance
+        unified_report.load_title_page_content(title_page_content)
 
         # Initialize SchemaHandler
         schema_handler = SchemaHandler(schema)
@@ -72,13 +103,27 @@ def analyze(sample: bool, csv: str | None, schema: str | None, output: str) -> N
         # Handle schema enforcement
         schema_handler.load_or_create_schema(df, csv_path=csv or "")
 
-        df, report = schema_handler.enforce_schema(df)
+        # Capture df with applied schema datatypes and schema report
+        df, schema_report = schema_handler.enforce_schema(df)
 
-        # Run EDA with output directory
-        eda = ExploratoryDataAnalysis(df, output_dir=output)
-        eda_report = eda.explore()
+        # Feed the schema report to the UnifiedReport instance
+        unified_report.load_schema_enforcement_page_content(schema_report)
 
-        logger.debug("\n📜 EDA Report:\n%s", eda_report)
+        # Create an instance of ExploratoryDataAnalysis
+        eda = ExploratoryDataAnalysis(
+            df,
+            output=output_dir,
+            unified_report=unified_report,
+        )
+
+        # Trigger AnalysisReport objects to be fed to the UnifiedReport instance
+        eda.explore()
+
+        # Finalize Unified Report
+        unified_report.finalize_section()
+
+        # Trigger the UnifiedReport to create the PDF
+        unified_report.export_to_pdf()
 
     except FileNotFoundError as e:
         logger.critical(f"❌ Dataset file not found: {e}")
