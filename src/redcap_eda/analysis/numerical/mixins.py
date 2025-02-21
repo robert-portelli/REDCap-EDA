@@ -5,17 +5,9 @@
     - Computes summary statistics (mean, median, std, min, max, outliers).
     - Generates **histograms** and **boxplots** for visualization.
     - Supports **log scale** and **outlier visibility toggling**.
-
-🔹 **Example Usage**:
-    ```python
-    from redcap_eda.analysis.numerical.mixins import NumericalAnalysisMixin
-    class MyClass(NumericalAnalysisMixin):
-        pass
-    obj = MyClass()
-    obj.summarize(df["age"])
-    ```
 """
 
+import os
 import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
@@ -29,11 +21,12 @@ class NumericalAnalysisMixin:
     __slots__ = ()
 
     @staticmethod
-    def summarize(series: pd.Series) -> AnalysisResult:
+    def numerical_summary(series: pd.Series, output_dir: str) -> AnalysisResult:
         """Analyze numerical columns (int/float) & generate plots.
 
         Args:
             series (pd.Series): The numerical series to analyze.
+            output_dir (str): The directory to save output files.
 
         Returns:
             AnalysisResult: Named tuple containing summary statistics and plots.
@@ -42,12 +35,12 @@ class NumericalAnalysisMixin:
         if series.empty:
             logger.warning(f"⚠️ Skipping empty numerical column: {series.name}")
             return AnalysisResult(
-                summary={"error": "Column is empty"},
-                plots=[],
+                summary=("Numerical Analysis", {"error": "Column is empty"}),
+                plot_paths=[],
             )
 
         # Compute summary statistics
-        summary = {
+        stats = {
             "mean": series.mean(),
             "median": series.median(),
             "std_dev": series.std(),
@@ -56,13 +49,15 @@ class NumericalAnalysisMixin:
             "outliers": NumericalAnalysisMixin.detect_outliers(series),
         }
 
+        summary = (f"Numerical Analysis of {series.name}", stats)
+
         # Generate plots (store file paths)
-        plots = [
-            NumericalAnalysisMixin.plot_distribution(series),
-            NumericalAnalysisMixin.plot_boxplot(series),
+        plot_paths = [
+            NumericalAnalysisMixin.plot_distribution(series, output_dir),
+            NumericalAnalysisMixin.plot_boxplot(series, output_dir),
         ]
 
-        return AnalysisResult(summary, plots)
+        return AnalysisResult(summary, plot_paths)
 
     @staticmethod
     def detect_outliers(series):
@@ -73,7 +68,7 @@ class NumericalAnalysisMixin:
         return series[(series < lower_bound) | (series > upper_bound)].tolist()
 
     @staticmethod
-    def plot_distribution(series: pd.Series) -> tuple[plt.Figure | None, str]:
+    def plot_distribution(series: pd.Series, output_dir: str) -> str:
         """Plots a histogram & KDE for numerical data and saves the file.
 
         Args:
@@ -81,20 +76,32 @@ class NumericalAnalysisMixin:
 
         Returns:
             str: The file path of the saved plot.
+            output_dir (str): The directory to save the plot.
         """
         if series.empty:
             logger.warning(f"⚠️ No data available for histogram: {series.name}")
-            return None, ""
+            return ""
 
         fig, ax = plt.subplots(figsize=(6, 4))
         sns.histplot(series, bins=20, kde=True, ax=ax)
         ax.set_title(f"Distribution of {series.name}")
 
         filename = f"{series.name}_distribution.png"
-        return fig, filename
+        plot_path = os.path.join(output_dir, filename)
+        fig.savefig(plot_path)
+        plt.close(fig)
+
+        if os.path.exists(plot_path):
+            logger.info(f"✅ Numerical Distribution Figure saved as {plot_path}")
+            return plot_path
+        else:
+            logger.warning(
+                f"❌ Failed to save Numerical Distribution Figure at: {plot_path}",
+            )
+            return ""
 
     @staticmethod
-    def plot_boxplot(series: pd.Series) -> tuple[plt.Figure | None, str]:
+    def plot_boxplot(series: pd.Series, output_dir: str) -> str:
         """Plots a boxplot for numerical data and saves the file.
 
         Args:
@@ -105,11 +112,20 @@ class NumericalAnalysisMixin:
         """
         if series.empty:
             logger.warning(f"⚠️ No data available for boxplot: {series.name}")
-            return None, ""
+            return ""
 
         fig, ax = plt.subplots(figsize=(4, 6))
         sns.boxplot(y=series, ax=ax)
         ax.set_title(f"Boxplot of {series.name}")
 
         filename = f"{series.name}_boxplot.png"
-        return fig, filename
+        plot_path = os.path.join(output_dir, filename)
+        fig.savefig(plot_path)
+        plt.close(fig)
+
+        if os.path.exists(plot_path):
+            logger.info(f"✅ Numerical boxplot saved as {plot_path}")
+            return plot_path
+        else:
+            logger.warning(f"❌ Failed to save Numerical boxplot at: {plot_path}")
+            return ""
