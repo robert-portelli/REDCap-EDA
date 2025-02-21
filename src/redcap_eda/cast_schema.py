@@ -96,20 +96,32 @@ class SchemaHandler:
             )
             return df, {}
 
+        before_types = df.dtypes.copy()  # Capture data types before conversion
         conversion_report = {}
 
         for column, dtype in self.schema.items():
             if column in df.columns:
                 try:
                     df[column] = df[column].astype(dtype)
-                    conversion_report[column] = f"Converted to {dtype}"
+                    conversion_report[column] = (
+                        before_types[column],
+                        dtype,
+                    )  # Store changes
                 except ValueError as e:
                     logger.warning(f"⚠️ Failed to convert {column} to {dtype}: {e}")
-                    conversion_report[column] = f"Conversion failed: {e}"
-            else:
-                logger.warning(f"⚠️ Column {column} not found in dataset.")
+                    conversion_report[column] = (
+                        before_types[column],
+                        "Conversion Failed",
+                    )
 
-        return df, conversion_report
+        # Convert the report to a structured DataFrame
+        schema_report = pd.DataFrame.from_dict(
+            conversion_report,
+            orient="index",
+            columns=["Before", "After"],
+        )
+
+        return df, schema_report
 
     def create_interactive_schema(
         self,
