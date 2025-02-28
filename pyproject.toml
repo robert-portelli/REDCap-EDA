@@ -1,6 +1,6 @@
 [project]
 name = "redcap-eda"
-version = "0.1.0"
+version = "0.2.0"
 description = "Perform exploratory data analysis on REDCap data"
 authors = [
     {name = "Robert Portelli"}
