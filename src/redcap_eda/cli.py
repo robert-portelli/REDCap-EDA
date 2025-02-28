@@ -29,7 +29,7 @@ def cli(debug: bool) -> None:
     help="Use the default REDCap sample dataset (Case 01).",
 )
 @click.option(
-    "--sample_schema",
+    "--sample-schema",
     is_flag=True,
     help="Use the sample schema for the REDCap sample dataset (Case 01).",
 )
