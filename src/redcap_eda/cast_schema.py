@@ -36,6 +36,40 @@ class SchemaHandler:
         "object": "Mixed data types, unstructured text, or complex objects.",
     }
 
+    SAMPLE_SCHEMA = {
+        "record_id": "int64",
+        "unvalidated_text": "string",
+        "date_dmy": "datetime64[ns]",
+        "date_mdy": "datetime64[ns]",
+        "date_ymd": "datetime64[ns]",
+        "datetime_dmyhm": "datetime64[ns]",
+        "datetime_mdyhm": "datetime64[ns]",
+        "datetime_ymdhm": "datetime64[ns]",
+        "datetime_dmyhms": "datetime64[ns]",
+        "datetime_mdyhms": "datetime64[ns]",
+        "datetime_ymdhms": "datetime64[ns]",
+        "email": "string",
+        "integer": "int64",
+        "number": "float64",
+        "phone": "string",
+        "time": "datetime64[ns]",
+        "zip": "int64",
+        "notes": "string",
+        "calculated": "float64",
+        "dropdown_numeric": "int64",
+        "dropdown_character": "category",
+        "dropdown_mixed": "category",
+        "radio_buttons": "int64",
+        "checkbox___1": "category",
+        "checkbox___2": "category",
+        "checkbox___3": "category",
+        "yes_no": "bool",
+        "true_false": "bool",
+        "signature_draw": "object",
+        "file_upload": "object",
+        "slider": "int64",
+    }
+
     def __init__(self, schema_path: str | None = None):
         """
         Initializes SchemaHandler.
@@ -211,6 +245,10 @@ class SchemaHandler:
         Returns:
             str: The schema file path.
         """
+        if self.schema_path == "sample":
+            logger.info("📥 Using built-in SAMPLE_SCHEMA")
+            self.schema = self.SAMPLE_SCHEMA
+            return self.schema_path
         if self.schema_path and os.path.exists(self.schema_path):
             logger.info(f"📥 Loading schema from {self.schema_path}")
             self.load_schema()

@@ -29,6 +29,11 @@ def cli(debug: bool) -> None:
     help="Use the default REDCap sample dataset (Case 01).",
 )
 @click.option(
+    "--sample_schema",
+    is_flag=True,
+    help="Use the sample schema for the REDCap sample dataset (Case 01).",
+)
+@click.option(
     "--csv",
     type=click.Path(exists=True),
     help="Path to a user-provided CSV file.",
@@ -43,11 +48,18 @@ def cli(debug: bool) -> None:
     default="eda_reports",
     help="Specify the directory to save reports.",
 )
-def analyze(sample: bool, csv: str | None, schema: str | None, output: str) -> None:
+def analyze(
+    sample: bool,
+    sample_schema: bool,
+    csv: str | None,
+    schema: str | None,
+    output: str,
+) -> None:
     """Performs EDA on the specified dataset.
 
     Args:
         sample (bool): Use the predefined REDCap sample dataset.
+        sample_schema (bool): Use the predefined sample schema.
         csv (str | None): Path to a user-provided dataset.
         schema (str | None): Path to a schema file.
         output (str): Directory to store analysis reports.
@@ -56,11 +68,15 @@ def analyze(sample: bool, csv: str | None, schema: str | None, output: str) -> N
         logger.error("❌ Cannot specify both `--sample` and `--csv`. Choose one.")
         return
 
-    if not csv and not sample:
-        logger.info(
-            "📊 No dataset specified, defaulting to REDCap test sample (Case 01).",
+    if csv and sample_schema:
+        logger.error(
+            "❌ Cannot use `--sample-schema` and `--csv`. Pass a valid path to `--schema` or omit `--schema` to interactive create one.",
         )
-        sample = True
+        return
+
+    if not csv and not sample:
+        logger.error("❌ No dataset specified. Choose `--csv` or `--sample`")
+        return
 
     # Ensure top-level directory exists
     os.makedirs(output, exist_ok=True)
@@ -84,6 +100,10 @@ def analyze(sample: bool, csv: str | None, schema: str | None, output: str) -> N
     try:
         # Load the dataset
         df = load_data(sample=sample, csv_path=csv)
+
+        # Check for sample-schema:
+        if sample_schema:
+            schema = "sample"
 
         # Capture dataset metadata for the title page
         title_page_content = {
