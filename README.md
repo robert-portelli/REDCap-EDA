@@ -29,7 +29,7 @@ redcap-eda analyze --sample
 
 ### 🔹 Example Using the Sample Dataset with a Predefined Schema
 ```bash
-redcap-eda analyze --sample --schema schemas/schema_sample_dataset.json
+redcap-eda analyze --sample --sample-schema
 ```
 
 ### 🔹 Running EDA on a Custom Dataset with Interactive Schema Creation
